@@ -25,7 +25,6 @@ function injectScript(path: string): void {
   const script = document.createElement("script");
   script.src = path;
   document.documentElement.appendChild(script);
-  // script.parentElement.removeChild(script);
   scriptElements.push(script);
 }
 
@@ -54,9 +53,9 @@ function injectCustomStyle(): void {
 }
 
 function destroy(): void {
-  // scriptElements.forEach((script) => {
-  //   document.documentElement.removeChild(script);
-  // });
+  scriptElements.forEach((script) => {
+    document.documentElement.removeChild(script);
+  });
   styleElements.forEach((style) => {
     document.head.removeChild(style);
   });
@@ -65,31 +64,45 @@ function destroy(): void {
   });
 }
 
-window.addEventListener("message", (event) => {
-  chrome.storage.sync.set({ isAngular: event.data.isAngular });
-  if (event.data && (event.data.isAngular || event.data.isAngular === false)) {
-    connectionPort.postMessage({ command: "check-is-angular" });
-  }
-});
+const ngCheckScriptPath = chrome.runtime.getURL("ng-check.js");
+injectScript(ngCheckScriptPath);
 
-chrome.runtime.onConnect.addListener((port) => {
-  connectionPort = port;
-  const ngCheckScriptPath = chrome.runtime.getURL("ng-check.js");
-  injectScript(ngCheckScriptPath);
-  port.onMessage.addListener(function (msg) {
-    if (msg.command === "start") {
-      init();
-      port.postMessage({ response: "started" });
-    } else if (msg.command === "end") {
-      window.postMessage({ command: "destroy" }, "*");
-      window.addEventListener("message", (event) => {
-        if (event.data.response === "destroyed") {
-          port.postMessage({ response: "ended" });
-          destroy();
-        }
-      });
-    }
-  });
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.command === "check-connection") {
+    sendResponse({ message: "connection-established" });
+  } else if (message.command === "check-ng-status") {
+    sendResponse({ message: "checking-ng-status" });
+
+    window.postMessage({ command: "start-ng-check" }, "*");
+    window.addEventListener("message", (event) => {
+      if (event.data.type === "ng-check-status") {
+        chrome.runtime.sendMessage(
+          {
+            command: "get-ng-status",
+            status: event.data.isAngular,
+          },
+          () => {
+            chrome.runtime.onMessage.addListener(
+              (appMessage, appSender, appResponse) => {
+                if (appMessage.command === "start") {
+                  init();
+                  appResponse({ message: "started" });
+                } else if (appMessage.command === "end") {
+                  window.postMessage({ command: "destroy" }, "*");
+                  window.addEventListener("message", (event) => {
+                    if (event.data.response === "destroyed") {
+                      appResponse({ message: "ended" });
+                      destroy();
+                    }
+                  });
+                }
+              }
+            );
+          }
+        );
+      }
+    });
+  }
 });
 
 window.addEventListener("load", () => {

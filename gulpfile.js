@@ -1,18 +1,19 @@
 const gulp = require("gulp");
-const ts = require("gulp-typescript");
-const tsProject = ts.createProject("tsconfig.json");
 const clean = require("gulp-clean");
 const uglify = require("gulp-uglify");
-var browserify = require("browserify");
-var source = require("vinyl-source-stream");
-var tsify = require("tsify");
+const browserify = require("browserify");
+const source = require("vinyl-source-stream");
+const tsify = require("tsify");
 const eventStream = require("event-stream");
 const rename = require("gulp-rename");
-var buffer = require("vinyl-buffer");
-var sourcemaps = require("gulp-sourcemaps");
+const buffer = require("vinyl-buffer");
+const sourcemaps = require("gulp-sourcemaps");
+const postcss = require("gulp-postcss");
+const uncss = require("postcss-uncss");
+const purgecss = require("gulp-purgecss");
 
 const paths = {
-  pages: ["src/**/*.html", "src/**/*.css"],
+  pages: ["src/**/*.html"],
   dist: "dist",
   assets: ["src/manifest.json", "src/static/**/*.*"],
   files: [
@@ -23,6 +24,7 @@ const paths = {
     "src/constants.ts",
   ],
   popup: ["src/popup/popup.ts"],
+  css: ["src/**/*.css"],
 };
 
 gulp.task("clean-dist", () => {
@@ -35,6 +37,17 @@ gulp.task("copy-assets", () => {
 
 gulp.task("copy-pages", () => {
   return gulp.src(paths.pages).pipe(gulp.dest(paths.dist));
+});
+
+gulp.task("css", () => {
+  return gulp
+    .src(paths.css[0])
+    .pipe(
+      purgecss({
+        content: [paths.pages[0]],
+      })
+    )
+    .pipe(gulp.dest(paths.dist));
 });
 
 gulp.task("ts", async () => {
@@ -67,7 +80,10 @@ gulp.task("ts", async () => {
 
 gulp.task(
   "build",
-  gulp.series("clean-dist", gulp.parallel("copy-assets", "copy-pages", "ts"))
+  gulp.series(
+    "clean-dist",
+    gulp.parallel("copy-assets", "copy-pages", "ts", "css")
+  )
 );
 
 gulp.task("watch", function () {

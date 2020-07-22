@@ -6,54 +6,74 @@ const enablerSwitch = document.getElementById(
 const statusP = document.getElementById("status") as HTMLParagraphElement;
 const tabQueryData = { active: true, currentWindow: true };
 
-function checkChromeStorage(port: chrome.runtime.Port): void {
-  chrome.storage.sync.get(["status"], (result) => {
-    isStarted = result.status === "started";
-    enablerSwitch.checked = isStarted;
-  });
-
-  chrome.storage.sync.get(["isAngular"], (result) => {
-    isAngular = result.isAngular;
-    enablerSwitch.disabled = !isAngular;
-    start(port);
-  });
-}
-
-chrome.tabs.query(tabQueryData, (tabs) => {
-  const port = chrome.tabs.connect(tabs[0].id);
-  checkChromeStorage(port);
-  port.onMessage.addListener((msg) => {
-    if (msg.command === "check-is-angular") {
-      checkChromeStorage(port);
-    }
-  });
-});
-function start(port: chrome.runtime.Port) {
-  if (isAngular) {
-    statusP.innerText =
-      "You can enable/disable this extension from below switch.";
-    enablerSwitch.addEventListener("change", (event) => {
-      if ((event.target as HTMLInputElement).checked) {
-        port.postMessage({ command: "start" });
-        port.onMessage.addListener((msg) => {
-          if (msg.response === "started") {
-            chrome.storage.sync.set({ status: "started" });
-            isStarted = true;
-          }
-        });
-      } else {
-        port.postMessage({ command: "end" });
-        port.onMessage.addListener((msg) => {
-          if (msg.response === "ended") {
-            chrome.storage.sync.set({ status: "ended" });
-            isStarted = false;
-          }
-        });
+function initPopup(): void {
+  chrome.tabs.query(tabQueryData, function (tabs) {
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { command: "check-connection" },
+      (connectionResponse) => {
+        if (
+          connectionResponse &&
+          connectionResponse.message === "connection-established"
+        ) {
+          chrome.tabs.sendMessage(
+            tabs[0].id,
+            { command: "check-ng-status" },
+            (ngStatusResponse) => {
+              if (ngStatusResponse.message === "checking-ng-status") {
+                chrome.runtime.onMessage.addListener(
+                  (message, sender, sendResponse) => {
+                    if (message.command === "get-ng-status") {
+                      isAngular = message.status;
+                      enablerSwitch.disabled = !isAngular;
+                      statusP.innerText = isAngular
+                        ? "You can enable/disable this extension from below switch."
+                        : "You can enable this extension only in an Angular application.";
+                      chrome.storage.sync.get(["status"], (result) => {
+                        isStarted = result.status === "started";
+                        enablerSwitch.checked = isStarted;
+                      });
+                      sendResponse();
+                      enablerSwitch.addEventListener("change", (event) => {
+                        if ((event.target as HTMLInputElement).checked) {
+                          chrome.tabs.sendMessage(
+                            tabs[0].id,
+                            { command: "start" },
+                            (startResponse) => {
+                              if (startResponse.message === "started") {
+                                chrome.storage.sync.set({ status: "started" });
+                                isStarted = true;
+                              }
+                            }
+                          );
+                        } else {
+                          chrome.tabs.sendMessage(
+                            tabs[0].id,
+                            { command: "end" },
+                            (endResponse) => {
+                              if (endResponse.message === "ended") {
+                                chrome.storage.sync.set({ status: "ended" });
+                                isStarted = false;
+                              }
+                            }
+                          );
+                        }
+                      });
+                    }
+                    sendResponse();
+                  }
+                );
+              }
+            }
+          );
+        } else {
+          enablerSwitch.disabled = true;
+          statusP.innerText =
+            "You can enable this extension only in an Angular application.";
+        }
       }
-    });
-  } else {
-    statusP.innerText =
-      "You can enable this extension only in an Angular application.";
-    enablerSwitch.disabled = true;
-  }
+    );
+  });
 }
+
+initPopup();
