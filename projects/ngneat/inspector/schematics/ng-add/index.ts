@@ -2,11 +2,10 @@ import { Rule, Tree, SchematicsException, chain, SchematicContext } from '@angul
 import { NodePackageInstallTask } from '@angular-devkit/schematics/tasks';
 import { insertImport, isImported } from '@schematics/angular/utility/ast-utils';
 import { InsertChange } from '@schematics/angular/utility/change';
-import { getWorkspace } from '@schematics/angular/utility/config';
 import { getAppModulePath } from '@schematics/angular/utility/ng-ast-utils';
 
 import { Schema } from './schema';
-import { addModuleImportToRootModule, getProjectFromWorkspace, getSourceFile } from './utils';
+import { addModuleImportToRootModule, getProjectFromWorkspace, getSourceFile, getWorkspace } from './utils';
 import { hasNgModuleImport } from './utils/ng-module-imports';
 import { targetBuildNotFoundError } from './utils/project-targets';
 const importModuleSet = [

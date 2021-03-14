@@ -1,11 +1,3 @@
-/**
- * @license
- * Copyright Google LLC All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-
 import * as ts from 'typescript';
 import { addImportToModule } from '@schematics/angular/utility/ast-utils';
 import { Change, InsertChange } from '@schematics/angular/utility/change';
@@ -16,6 +8,7 @@ import { NodePackageInstallTask } from '@angular-devkit/schematics/tasks';
 import { Rule, SchematicContext, SchematicsException, Tree } from '@angular-devkit/schematics';
 import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
 import { WorkspaceProject, WorkspaceSchema } from '@schematics/angular/utility/workspace-models';
+import { parse } from 'jsonc-parser';
 
 export function installPackageJsonDependencies(): Rule {
   return (host: Tree, context: SchematicContext) => {
@@ -173,4 +166,20 @@ export function getSourceFile(host: Tree, path: string) {
   const content = buffer.toString();
 
   return ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
+}
+
+export function getWorkspacePath(host: Tree) {
+  const possibleFiles = ['/angular.json', '/.angular.json'];
+  const path = possibleFiles.filter((filePath) => host.exists(filePath))[0];
+  return path;
+}
+
+export function getWorkspace(host: Tree) {
+  const path = getWorkspacePath(host);
+  const configBuffer = host.read(path);
+  if (configBuffer === null) {
+    throw new SchematicsException(`Could not find (${path})`);
+  }
+  const content = configBuffer.toString();
+  return parse(content);
 }

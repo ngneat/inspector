@@ -38,6 +38,7 @@
     "@schematics/angular": "^10.1.7",
     "ace-builds": "^1.4.12",
     "bootstrap": "^4.5.2",
+    "jsonc-parser": "^3.0.0",
     "rxjs": "~6.6.0",
     "tinykeys": "^1.1.0",
     "tslib": "^2.0.0",
