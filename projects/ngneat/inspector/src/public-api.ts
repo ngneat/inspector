@@ -14,7 +14,7 @@
 // export * from './lib/components/inspector-panel/tabs/properties/properties.component';
 // export * from './lib/components/inspector-panel/inspector-panel.component';
 // export * from './lib/directives/field-host.directive';
-// export * from './lib/inspector.component';
+export * from './lib/inspector.component';
 export * from './lib/inspector.module';
 // export * from './lib/inspector.model';
 // export * from './shared/helpers';
